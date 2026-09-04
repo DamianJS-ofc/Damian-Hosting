@@ -12,8 +12,9 @@ const app = express();
 app.use(cors({origin:'*'}));
 app.use(express.json({limit:'5mb'}));
 
-let logs = "=== DAMIAN-HOSTING v4 FILE MANAGER ONLINE ===\n";
+let logs = "=== DAMIAN-HOSTING v4.2 LOCKED ===\n";
 const BOT_DIR = path.join(__dirname, 'bot');
+let isCloning = false;
 
 function safe(p){
   let full = path.join(BOT_DIR, p||'');
@@ -21,32 +22,36 @@ function safe(p){
   return full;
 }
 
-app.get('/', (req,res)=>res.send('DAMIAN-HOSTING ONLINE v4'));
+app.get('/', (req,res)=>res.send('DAMIAN-HOSTING ONLINE v4.2'));
 
 app.get('/clonar',(req,res)=>{
   const repo=req.query.repo;
   if(!repo) return res.send('Falta ?repo=');
+  if(isCloning) return res.send('YA ESTA CLONANDO, espera...');
+  isCloning = true;
+  
   logs+=`\n$ git clone ${repo}\n`;
   res.send('Clonando... mira /logs');
   
-  try{ 
-    if(fs.existsSync(BOT_DIR)) {
-      fs.rmSync(BOT_DIR,{recursive:true,force:true});
-      logs+="Borrado anterior OK\n";
-    }
-  } catch(e){ logs+=`Force rm error: ${e.message}\n`; }
-
-  exec(`git clone ${repo} ${BOT_DIR} && cd ${BOT_DIR} && npm install`,{timeout:300000},(e,out,err)=>{
-    logs+=out+"\n"+err;
-    if(e){
-      logs+=`\nERROR: ${e.message}\n$ `;
-    } else {
-      logs+=`\n=== CLON OK - Instalado - Iniciando bot ===\n$ `;
+  try{ if(fs.existsSync(BOT_DIR)) fs.rmSync(BOT_DIR,{recursive:true,force:true}); } catch(e){}
+  
+  exec(`git clone ${repo} ${BOT_DIR}`,{timeout:120000},(e1,out1,err1)=>{
+    logs+=out1+err1;
+    if(e1){ logs+=`\nCLONE ERROR: ${e1.message}\n$ `; isCloning=false; return; }
+    
+    logs+=`\nClone OK, instalando dependencias...\n$ `;
+    
+    exec(`cd ${BOT_DIR} && npm install --no-audit --no-fund --force`,{timeout:300000},(e2,out2,err2)=>{
+      logs+=out2.slice(-5000)+err2.slice(-2000);
+      if(e2){
+        logs+=`\nINSTALL ERROR pero intento iniciar igual: ${e2.message}\n`;
+      }
+      logs+=`\n=== INSTALADO - INICIANDO BOT ===\n$ `;
+      isCloning = false;
       const p = exec(`cd ${BOT_DIR} && npm start`,{timeout:0});
-      p.stdout?.on('data',d=>{ logs+=d; console.log(d); });
+      p.stdout?.on('data',d=>{ logs+=d; });
       p.stderr?.on('data',d=>{ logs+=d; });
-      p.on('error',err=>logs+=`\nStart error: ${err.message}\n`);
-    }
+    });
   });
 });
 
@@ -92,7 +97,6 @@ app.get('/delete',(req,res)=>{
       if(fs.statSync(fp).isDirectory()) fs.rmSync(fp,{recursive:true,force:true});
       else fs.unlinkSync(fp);
     }
-    logs+=`\n$ rm ${req.query.path}\n$ `;
     res.send('Borrado');
   }catch(e){res.status(500).send(e.message)}
 });
@@ -107,4 +111,4 @@ app.get('/mkdir',(req,res)=>{
   catch(e){res.status(500).send(e.message)}
 });
 
-app.listen(10000,()=>console.log('DAMIAN-HOSTING v4.1 FIXED ON 10000'));
+app.listen(10000,()=>console.log('DAMIAN-HOSTING v4.2 LOCKED ON 10000'));
