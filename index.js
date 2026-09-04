@@ -1,15 +1,22 @@
-const express = require('express');
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
-const { exec } = require('child_process');
+import express from 'express';
+import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
+import { exec } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 app.use(cors({origin:'*'}));
 app.use(express.json({limit:'50mb'}));
+
 let LOGS='=== DAMIAN-HOSTING v5 READY ===\n';
 let CUR_DIR=path.join(__dirname,'bot');
 if(!fs.existsSync(CUR_DIR)) fs.mkdirSync(CUR_DIR,{recursive:true});
 function addLog(t){LOGS+=t+'\n';if(LOGS.length>50000)LOGS=LOGS.slice(-40000);console.log(t);}
+
 app.get('/',(req,res)=>res.send('v5 ON'));
 app.get('/logs',(req,res)=>{res.set('Access-Control-Allow-Origin','*');res.type('text/plain').send(LOGS);});
 app.get('/exec',(req,res)=>{
